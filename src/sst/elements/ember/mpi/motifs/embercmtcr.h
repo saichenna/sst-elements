@@ -1,13 +1,13 @@
-// Copyright 2009-2022 NTESS. Under the terms
+// Copyright 2009-2021 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2022, NTESS
+// Copyright (c) 2009-2021, NTESS
 // All rights reserved.
 //
 // Portions are copyright of other developers:
 // See the file CONTRIBUTORS.TXT in the top level directory
-// of the distribution for more information.
+// the distribution for more information.
 //
 // This file is part of the SST software package. For license
 // information, see the LICENSE file in the top level directory of the
@@ -19,6 +19,10 @@
 
 #include <sst/core/rng/gaussian.h>
 #include "mpi/embermpigen.h"
+#include <string.h>
+#include <map>
+#include <Python.h>
+
 
 namespace SST {
 namespace Ember {
@@ -87,6 +91,15 @@ private:
 	uint32_t iterations;	// Total no. of timesteps being simulated
 	uint32_t eltSize;		// Size of element (5-20)
 	uint32_t variables;     // No. of physical quantities
+	uint32_t rkstages;      // No. of range-kutta stages (3)
+	uint32_t nelt;			// Total no. of elements per process (100-10,000)
+	std::string equationsfile; //filename containing analytic models for various compute kernels
+	std::string tracefile; //filename of the main trace file containing details for trace-based simulation
+	uint32_t npart;      // No. of particles per process
+	uint32_t nwallgpart;			// Total no. of ghost particles per process
+	uint32_t lr; // no. of real attributes associated with each particle
+	uint32_t li; // no. of integer attributes associated with each particle
+
 
 // User parameters - machine
 	int32_t px;				// Machine size (no. of nodes in 3d dimensions)
@@ -98,7 +111,6 @@ private:
 	uint32_t mx;			// Local distribution of the elements on a MPI rank
 	uint32_t my;
 	uint32_t mz;
-	uint32_t nelt;			// Total no. of elements per process (100-10,000)
 //	uint64_t nsCompute;		// computation time (or delay)
 
 // User parameters - processor
@@ -110,6 +122,7 @@ private:
 // Model parameters
 	uint32_t m_loopIndex;   // Loop over 'iterations'
     uint32_t m_phyIndex;    // Loop over 'variables'
+    uint32_t m_rkstage;     // Loop over 'rkstages'
 	int32_t myX;			// Local (x,y,z) coordinates and rank
 	int32_t myY;
 	int32_t myZ;
@@ -117,6 +130,40 @@ private:
 	uint64_t xferSize;      // Average transfer size
 	uint32_t stages;        // No. of Stages in cyrstal router reduction
 	SSTGaussianDistribution* m_random;
+	bool docompute;       // Set this flag to true to include computation blocks during simulation
+	bool istrace;       // Set this flag to true to include trace based simulation
+	std::map<std::vector<int>,int> partcounthashmap;
+	std::map<std::vector<int>,int> wallpartcounthashmap;
+	std::map<std::vector<int>,int> partmvmthashmap;
+	std::map<std::vector<int>,int> wallpartmvmthashmap;
+	std::map<std::string,std::string> equationshashmap;
+	std::map<std::string,int> parameterhashmap;
+	//std::map<uint32_t,uint32_t> recvbuffer;
+
+
+
+// Helper methods
+	uint32_t getparticles(uint32_t);
+	uint32_t getwallghostparticles(uint32_t);
+	double getUPL();
+	double getcompute1();
+	double getCGP();
+	double getIPPL();
+	double getUPF();
+	double getRK3();
+	//uint32_t getgoingparticles(uint64_t,uint32_t,uint32_t);
+	//uint32_t getcomingparticles(uint64_t,uint32_t,uint32_t);
+	//uint32_t getgoingwallparticles(uint64_t,uint32_t,uint32_t);
+	//uint32_t getcomingwallparticles(uint64_t,uint32_t,uint32_t);
+	std::vector<uint32_t> getmovingparticles(uint64_t,uint32_t,uint32_t);
+	void setuptracefile();
+	void setparameterhashmap();
+	std::map<std::vector<int>,int> workloaddictTohashmap(PyObject*);
+	std::map<std::string,std::string> equationsdictTohashmap(PyObject*);
+	PyObject* equationshashMapTodict(std::map<std::string,std::string>);
+	std::vector<std::string> listToVector(PyObject*);
+	PyObject* paramshashmapTodict(std::map<std::string,int>);
+	double getcomputetime(std::string);
 
 };
 

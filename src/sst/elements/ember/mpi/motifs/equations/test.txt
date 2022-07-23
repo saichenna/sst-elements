@@ -1,0 +1,2 @@
+parameters=eltSize,nelt
+cleanFaces=add(mul(div(square(eltSize), add(add(eltSize, nelt), cube(eltSize))), -3.73224076827e-06), 9.54623653704e-07)

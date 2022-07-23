@@ -1,13 +1,13 @@
-// Copyright 2009-2022 NTESS. Under the terms
+// Copyright 2009-2021 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2022, NTESS
+// Copyright (c) 2009-2021, NTESS
 // All rights reserved.
 //
 // Portions are copyright of other developers:
 // See the file CONTRIBUTORS.TXT in the top level directory
-// of the distribution for more information.
+// the distribution for more information.
 //
 // This file is part of the SST software package. For license
 // information, see the LICENSE file in the top level directory of the
@@ -19,7 +19,9 @@
 
 #include <sst/core/rng/gaussian.h>
 #include "mpi/embermpigen.h"
-
+#include <string.h>
+#include <map>
+#include <Python.h>
 namespace SST {
 namespace Ember {
 
@@ -82,12 +84,23 @@ public:
 	void configure();
 	bool generate( std::queue<EmberEvent*>& evQ);
 
+	void generate_computetimes();
+	void generate_distributions();
+	PyObject* hashMapTodict(std::map<std::string,uint32_t> parammap);
+	std::map<std::string,double> dictTohashMap(PyObject* outputdict);
+
+
+
 private:
 
 // User parameters - application
 	uint32_t iterations;	// Total no. of timesteps being simulated
 	uint32_t eltSize;		// Size of element (5-20)
-    uint32_t variables;     // No. of physical quantities
+    	uint32_t variables;     // No. of physical quantities
+	uint32_t rkstages;      // No. of range-kutta stages (3)
+	uint32_t nelt;			// Total no. of elements per process (100-10,000)
+	std::string equationsfile; //filename containing analytic models for various compute kernels
+
 
 // User parameters - machine
 	int32_t px;			// Machine size (no. of nodes in 3d dimensions)
@@ -99,7 +112,6 @@ private:
 	uint32_t mx;			// Local distribution of the elements on a MPI rank
 	uint32_t my;
 	uint32_t mz;
-	uint32_t nelt;			// Total no. of elements per process (100-10,000)
 
 // User parameters - processor
 	uint64_t procFlops;		// no. of FLOPS/cycle for the processor
@@ -110,8 +122,20 @@ private:
 
 // Model parameters
 	uint32_t m_loopIndex;   // Loop over 'iterations'
-    uint32_t m_phyIndex;    // Loop over 'variables'
+    	uint32_t m_phyIndex;    // Loop over 'variables'
+	uint32_t m_rkstage;    // Loop over 'rkstages'
 	SSTGaussianDistribution* m_random;
+	SSTGaussianDistribution* m_computeconv;
+	SSTGaussianDistribution* m_computedr;
+	SSTGaussianDistribution* m_computeds;
+	SSTGaussianDistribution* m_computedt;
+	SSTGaussianDistribution* m_comminit;
+	SSTGaussianDistribution* m_comminitaxis;
+	SSTGaussianDistribution* m_preparefaces;
+	SSTGaussianDistribution* m_cleanfaces;
+	SSTGaussianDistribution* m_computesum;
+	SSTGaussianDistribution* m_computerk;
+	bool docompute;       // Set this flag to true to include computation blocks during simulation
 	int32_t myX;			// Local (x,y,z) coordinates
 	int32_t myY;
 	int32_t myZ;
@@ -119,6 +143,7 @@ private:
 	uint64_t x_xferSize;	// Amount of data transferred in x,y,z, direction
 	uint64_t y_xferSize;
 	uint64_t z_xferSize;
+	uint32_t sizeof_cell;   //datatype bytes
 	int32_t x_pos;			// Neighbors in (x,y,z) direction
 	int32_t x_neg;
 	int32_t y_pos;
@@ -132,6 +157,7 @@ private:
 	bool sendz_pos;
 	bool sendz_neg;
 
+	std::map<std::string,double> outputvalues; //hashMap containing the key-value pair of compute-kernel name and the compute time (in nanoseconds) based on application parameters
 
 //	Statistic<uint64_t> *Recv_time;
 
